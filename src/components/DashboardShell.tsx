@@ -458,7 +458,7 @@ export default function DashboardShell({
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tab }),
+          body: JSON.stringify({ tab, profile }),
         });
         if (res.ok) {
           const data = await res.json();

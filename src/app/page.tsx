@@ -1,13 +1,23 @@
-import { redirect } from "next/navigation";
-import { loadProfileAsync } from "@/lib/storage";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
-export default async function Home() {
-  const profile = await loadProfileAsync();
-  if (profile) {
-    redirect("/dashboard");
-  } else {
-    redirect("/setup");
-  }
+export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const stored = localStorage.getItem("clinic-profile");
+    if (stored) {
+      router.push("/dashboard");
+    } else {
+      router.push("/setup");
+    }
+  }, [router]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
+    </div>
+  );
 }

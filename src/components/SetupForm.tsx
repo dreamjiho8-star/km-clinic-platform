@@ -91,7 +91,13 @@ export default function SetupForm() {
           staffCount, dailyHours, frequentWait, complaintFrequency, revenueConcentration,
         }),
       });
-      if (res.ok) router.push("/dashboard");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.profile) {
+          localStorage.setItem("clinic-profile", JSON.stringify(data.profile));
+        }
+        router.push("/dashboard");
+      }
     } finally {
       setSaving(false);
     }

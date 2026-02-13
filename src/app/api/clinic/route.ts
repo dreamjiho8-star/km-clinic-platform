@@ -1,11 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { saveProfileAsync, loadProfileAsync, deleteProfileAsync } from "@/lib/storage";
-import { ClinicProfile } from "@/types/clinic";
-
 export const runtime = "nodejs";
 
+import { NextRequest, NextResponse } from "next/server";
+import {
+  setMemoryProfile,
+  getMemoryProfile,
+  saveProfileLocal,
+  loadProfileLocal,
+  deleteProfileLocal,
+} from "@/lib/storage";
+import { ClinicProfile } from "@/types/clinic";
+
 export async function GET() {
-  const profile = await loadProfileAsync();
+  let profile = getMemoryProfile();
+  if (!profile) {
+    profile = await loadProfileLocal();
+  }
   return NextResponse.json({ profile: profile || null });
 }
 
@@ -18,7 +27,8 @@ export async function POST(req: NextRequest) {
       createdAt: body.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-    await saveProfileAsync(profile);
+    setMemoryProfile(profile);
+    await saveProfileLocal(profile);
     return NextResponse.json({ success: true, profile });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 400 });
@@ -26,6 +36,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  await deleteProfileAsync();
+  setMemoryProfile(null as any);
+  await deleteProfileLocal();
   return NextResponse.json({ success: true });
 }

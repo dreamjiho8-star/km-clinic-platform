@@ -5,3 +5,4 @@ data/clinic-profile.json
 *.tsbuildinfo
 .DS_Store
 /tmp/
+.vercel
