@@ -23,37 +23,34 @@ export async function POST(req: NextRequest) {
 
     const p = profile as ClinicProfile;
 
-    // 결정론적 분석
     let deterministic: any = {};
     switch (tab) {
-      case "location":
-        deterministic = analyzeLocation(p);
-        break;
-      case "coo":
-        deterministic = analyzeCooFinance(p);
-        break;
-      case "package":
-        deterministic = analyzePackage(p);
-        break;
-      case "positioning":
-        deterministic = analyzePositioning(p);
-        break;
-      case "risk":
-        deterministic = analyzeRisk(p);
-        break;
+      case "location": deterministic = analyzeLocation(p); break;
+      case "coo": deterministic = analyzeCooFinance(p); break;
+      case "package": deterministic = analyzePackage(p); break;
+      case "positioning": deterministic = analyzePositioning(p); break;
+      case "risk": deterministic = analyzeRisk(p); break;
     }
 
-    // LLM 분석
     let llmAnalysis = "";
+    let llmError = "";
+    let llmDebug = {
+      baseUrl: process.env.LLM_BASE_URL || "(없음)",
+      model: process.env.LLM_MODEL || "(없음)",
+      hasKey: !!process.env.LLM_API_KEY,
+    };
+
     try {
       const messages = buildMessages(tab, p);
       llmAnalysis = await callLLM(messages);
-    } catch (e) {
-      console.log("LLM 폴백 — 결정론적 분석만 반환");
+    } catch (e: any) {
+      llmError = e.message || "알 수 없는 오류";
     }
 
     return NextResponse.json({
       llmAnalysis,
+      llmError,
+      llmDebug,
       deterministic,
       financials: deriveFinancials(p),
     });
