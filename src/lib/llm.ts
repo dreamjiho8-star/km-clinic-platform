@@ -1,9 +1,9 @@
 import { ClinicProfile } from "@/types/clinic";
 import { deriveFinancials } from "./analysis";
 
-const BASE_URL = process.env.LLM_BASE_URL || "http://localhost:11434/v1";
-const API_KEY = process.env.LLM_API_KEY || "ollama";
-const MODEL = process.env.LLM_MODEL || "llama3.1:latest";
+const BASE_URL = (process.env.LLM_BASE_URL || "http://localhost:11434/v1").trim();
+const API_KEY = (process.env.LLM_API_KEY || "ollama").trim();
+const MODEL = (process.env.LLM_MODEL || "llama3.1:latest").trim();
 
 // 영어→한글 치환 맵
 const REPLACE_MAP: [RegExp, string][] = [
