@@ -33,24 +33,15 @@ export async function POST(req: NextRequest) {
     }
 
     let llmAnalysis = "";
-    let llmError = "";
-    let llmDebug = {
-      baseUrl: process.env.LLM_BASE_URL || "(없음)",
-      model: process.env.LLM_MODEL || "(없음)",
-      hasKey: !!process.env.LLM_API_KEY,
-    };
-
     try {
       const messages = buildMessages(tab, p);
       llmAnalysis = await callLLM(messages);
-    } catch (e: any) {
-      llmError = e.message || "알 수 없는 오류";
+    } catch {
+      // LLM 실패 시 결정론적 분석만 반환
     }
 
     return NextResponse.json({
       llmAnalysis,
-      llmError,
-      llmDebug,
       deterministic,
       financials: deriveFinancials(p),
     });
