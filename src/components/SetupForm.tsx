@@ -204,15 +204,15 @@ export default function SetupForm() {
         </div>
       </header>
 
-      {/* 스텝 인디케이터 - 깔끔한 한 줄 */}
+      {/* 스텝 인디케이터 */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-3xl mx-auto px-6 py-4">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center">
                 <button
                   onClick={() => handleStepClick(s.id)}
-                  className="flex items-center gap-2"
+                  className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2"
                 >
                   <span
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 transition-all ${
@@ -226,7 +226,7 @@ export default function SetupForm() {
                     {step > s.id ? "✓" : s.id}
                   </span>
                   <span
-                    className={`text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors hidden sm:inline ${
                       step === s.id
                         ? "text-emerald-700"
                         : step > s.id
@@ -239,7 +239,7 @@ export default function SetupForm() {
                 </button>
                 {i < STEPS.length - 1 && (
                   <div
-                    className={`w-8 lg:w-12 h-px mx-3 flex-shrink-0 ${
+                    className={`w-4 sm:w-8 lg:w-12 h-px mx-1 sm:mx-3 flex-shrink-0 ${
                       step > s.id ? "bg-emerald-300" : "bg-gray-200"
                     }`}
                   />
