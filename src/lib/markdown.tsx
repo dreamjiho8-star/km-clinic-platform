@@ -25,9 +25,10 @@ function inlineFormat(text: string): string {
 
 /**
  * 간격 규칙:
- * - ## 대제목: 위 32px (pt-8), 아래 16px (pb-4)  → 엔터 2번 느낌
- * - ### 소제목: 위 24px (pt-6), 아래 8px (pb-2)   → 엔터 1.5번 느낌
- * - 본문/리스트: 위 0, 아래 12px (pb-3)            → 엔터 1번 느낌
+ * - ## 대제목: 위 32px (pt-8), 아래 16px (pb-4)  → 엔터 2번
+ * - ### 소제목: 위 24px (pt-6), 아래 8px (pb-2)   → 엔터 1.5번
+ * - 섹션 라벨 ("OO:") : 위 20px (pt-5), 아래 4px (pb-1) → 엔터 1.5번
+ * - 본문/리스트: 위 0, 아래 16px (pb-4)            → 엔터 1번 (여유)
  * - 첫 번째 요소는 위 간격 없음
  */
 export function renderMarkdown(md: string) {
@@ -45,11 +46,11 @@ export function renderMarkdown(md: string) {
     // 순서 리스트(섹션 구분)는 첫 요소가 아닐 때 위에 넉넉한 간격
     const topPad = isOrdered && elements.length > 0 ? "pt-6" : "";
     elements.push(
-      <Tag key={key++} className={`space-y-2.5 pb-3 pl-1 ${topPad}`}>
+      <Tag key={key++} className={`space-y-3 pb-4 pl-1 ${topPad}`}>
         {listItems.map((item, i) => (
           <li
             key={i}
-            className="flex items-start gap-2.5 text-sm text-gray-700 leading-[1.8]"
+            className="flex items-start gap-2.5 text-sm text-gray-700 leading-[2]"
           >
             {isOrdered ? (
               <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-50 text-emerald-600 text-xs font-semibold flex items-center justify-center mt-0.5">
@@ -133,13 +134,27 @@ export function renderMarkdown(md: string) {
     else if (trimmed === "") {
       flushList();
     }
+    // 섹션 라벨 ("지역 특성 및 환자군 정합성:" 등) — 콜론으로 끝나는 짧은 줄
+    else if (/^(\*\*)?[^.!?]{2,40}:\s*(\*\*)?$/.test(trimmed)) {
+      flushList();
+      const label = trimmed.replace(/\*\*/g, "").replace(/:$/, "");
+      elements.push(
+        <p
+          key={key++}
+          className={`text-[13px] font-semibold text-gray-800 ${elements.length > 0 ? "pt-5" : ""} pb-1`}
+        >
+          {label}
+        </p>
+      );
+      isFirst = false;
+    }
     // 일반 텍스트 — 엔터 1번
     else {
       flushList();
       elements.push(
         <p
           key={key++}
-          className="text-sm text-gray-700 leading-[1.8] pb-3"
+          className="text-sm text-gray-700 leading-[2] pb-4"
           dangerouslySetInnerHTML={{ __html: inlineFormat(trimmed) }}
         />
       );
