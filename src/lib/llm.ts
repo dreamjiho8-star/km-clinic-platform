@@ -22,6 +22,8 @@ const REPLACE_MAP: [RegExp, string][] = [
 
 function postProcess(text: string): string {
   let result = text;
+  // Qwen3 thinking 태그 제거
+  result = result.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   // 한자 제거
   result = result.replace(/[\u4e00-\u9fff]/g, "");
   // 알려진 영어→한글 치환
