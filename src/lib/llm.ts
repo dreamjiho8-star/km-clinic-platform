@@ -56,7 +56,8 @@ export async function callLLM(
       signal: controller.signal,
     });
     if (!res.ok) {
-      console.error(`[llm] API 응답 오류: ${res.status} ${res.statusText}`);
+      const errBody = await res.text().catch(() => "");
+      console.error(`[llm] API 응답 오류: ${res.status} ${res.statusText} | URL: ${BASE_URL} | MODEL: ${MODEL} | body: ${errBody.slice(0, 500)}`);
       return "";
     }
     const data = await res.json();
