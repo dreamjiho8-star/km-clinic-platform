@@ -35,13 +35,19 @@ function postProcess(text: string): string {
   return result.trim();
 }
 
+// 디버그용: 마지막 에러 기록
+export let _lastLLMError = "";
+
 export async function callLLM(
   messages: { role: string; content: string }[]
 ): Promise<string> {
+  _lastLLMError = "";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 180_000);
   try {
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
+    const url = `${BASE_URL}/chat/completions`;
+    console.log(`[llm] calling: ${url} model=${MODEL} key=${API_KEY ? API_KEY.slice(0, 8) + "..." : "MISSING"}`);
+    const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -56,18 +62,18 @@ export async function callLLM(
       signal: controller.signal,
     });
     if (!res.ok) {
-      console.error(`[llm] API 응답 오류: ${res.status} ${res.statusText}`);
+      const errBody = await res.text().catch(() => "");
+      _lastLLMError = `HTTP ${res.status}: ${errBody.slice(0, 300)}`;
+      console.error(`[llm] API 오류: ${_lastLLMError}`);
       return "";
     }
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content?.trim() || "";
+    if (!content) _lastLLMError = `empty content, raw: ${JSON.stringify(data).slice(0, 200)}`;
     return postProcess(content);
   } catch (e) {
-    if (e instanceof DOMException && e.name === "AbortError") {
-      console.error("[llm] 요청 타임아웃 (180초 초과)");
-    } else {
-      console.error("[llm] 호출 실패:", e);
-    }
+    _lastLLMError = `exception: ${String(e)}`;
+    console.error("[llm] 호출 실패:", e);
     return "";
   } finally {
     clearTimeout(timeout);
