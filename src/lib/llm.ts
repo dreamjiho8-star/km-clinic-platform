@@ -51,7 +51,7 @@ export async function callLLM(
         model: MODEL,
         messages,
         temperature: 0.4,
-        max_tokens: 4096,
+        max_tokens: 8192,
       }),
       signal: controller.signal,
     });
