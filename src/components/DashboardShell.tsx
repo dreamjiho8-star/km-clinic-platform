@@ -883,18 +883,13 @@ export default function DashboardShell({
                   </section>
                 )}
 
-                {/* LLM 미연동 안내 (시뮬레이터/벤치마크 제외) */}
+                {/* LLM 분석 없을 때 안내 (시뮬레이터/벤치마크 제외) */}
                 {activeTab !== "simulator" && activeTab !== "benchmark" && !currentResult.llmAnalysis && (
                   <section>
                     <div className="card-flat border-dashed border-2 border-gray-200 text-center py-8">
-                      <p className="text-sm text-gray-500 mb-1">
-                        생성형 심층 분석을 사용하려면 환경변수를 설정하십시오
+                      <p className="text-sm text-gray-500">
+                        심층 분석을 불러오지 못했습니다. 잠시 후 다시 시도해주십시오.
                       </p>
-                      <div className="mt-3 text-xs text-gray-400 font-mono bg-gray-100 rounded-lg inline-block px-4 py-2 text-left">
-                        <p>LLM_BASE_URL=http://localhost:11434/v1</p>
-                        <p>LLM_MODEL=llama3.2</p>
-                        <p>LLM_API_KEY=선택사항</p>
-                      </div>
                     </div>
                   </section>
                 )}
