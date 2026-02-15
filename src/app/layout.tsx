@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "한의원 경영 인텔리전스",
-  description: "한의원 경영 의사결정 지원 시스템",
+  title: "MediStrategy",
+  description: "한의원 개원 경영 분석 플랫폼",
 };
 
 export default function RootLayout({
