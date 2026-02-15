@@ -56,8 +56,7 @@ export async function callLLM(
       signal: controller.signal,
     });
     if (!res.ok) {
-      const errBody = await res.text().catch(() => "");
-      console.error(`[llm] API 응답 오류: ${res.status} ${res.statusText} | URL: ${BASE_URL} | MODEL: ${MODEL} | body: ${errBody.slice(0, 500)}`);
+      console.error(`[llm] API 응답 오류: ${res.status} ${res.statusText}`);
       return "";
     }
     const data = await res.json();
@@ -77,41 +76,43 @@ export async function callLLM(
 
 export function profileToContext(p: ClinicProfile): string {
   const f = deriveFinancials(p);
+  const fmt = (v: number | undefined | null) =>
+    v != null && !isNaN(v) ? v.toLocaleString() : "0";
   return `## 한의원 프로필 데이터
 
 **기본 정보:**
-- 지역: ${p.regionCity} ${p.regionDong}
-- 건물 유형: ${p.buildingType}
-- 개원 상태: ${p.openingStatus}
+- 지역: ${p.regionCity || ""} ${p.regionDong || ""}
+- 건물 유형: ${p.buildingType || ""}
+- 개원 상태: ${p.openingStatus || ""}
 
 **진료 구조:**
-- 주 진료 분야: ${p.specialties.join(", ")}
-- 주요 환자군: ${p.patientGroup}
+- 주 진료 분야: ${p.specialties?.join(", ") || ""}
+- 주요 환자군: ${p.patientGroup || ""}
 
 **수익 구조:**
-- 평균 객단가: ${p.avgRevenuePerPatient.toLocaleString()}원
-- 월 내원 환자 수: ${p.monthlyPatients.toLocaleString()}명
-- 재진율 구간: ${p.revisitRange}
-- 비급여 비중: ${p.nonInsuranceRatio}%
-- 월 매출 추정: ${f.monthlyRevenue.toLocaleString()}원
+- 평균 객단가: ${fmt(p.avgRevenuePerPatient)}원
+- 월 내원 환자 수: ${fmt(p.monthlyPatients)}명
+- 재진율 구간: ${p.revisitRange || ""}
+- 비급여 비중: ${p.nonInsuranceRatio ?? 0}%
+- 월 매출 추정: ${fmt(f.monthlyRevenue)}원
 
 **비용 구조:**
-- 임대료: ${p.monthlyRent.toLocaleString()}원 (매출 대비 ${f.rentRatio}%)
-- 인건비: ${p.laborCost.toLocaleString()}원 (매출 대비 ${f.laborRatio}%)
-- 기타 고정비: ${p.otherFixedCost.toLocaleString()}원
-- 변동비: ${p.variableCostEstimate.toLocaleString()}원
+- 임대료: ${fmt(p.monthlyRent)}원 (매출 대비 ${f.rentRatio ?? 0}%)
+- 인건비: ${fmt(p.laborCost)}원 (매출 대비 ${f.laborRatio ?? 0}%)
+- 기타 고정비: ${fmt(p.otherFixedCost)}원
+- 변동비: ${fmt(p.variableCostEstimate)}원
 
 **재무 지표 (추정):**
-- 영업이익: ${f.operatingProfit.toLocaleString()}원
-- 영업이익률: ${f.operatingMargin}%
-- 손익분기 환자 수: ${f.breakEvenPatients.toLocaleString()}명/월
+- 영업이익: ${fmt(f.operatingProfit)}원
+- 영업이익률: ${f.operatingMargin ?? 0}%
+- 손익분기 환자 수: ${fmt(f.breakEvenPatients)}명/월
 
 **운영:**
-- 직원 수: ${p.staffCount}명 (원장 제외)
-- 일 진료 시간: ${p.dailyHours}시간
+- 직원 수: ${p.staffCount ?? 0}명 (원장 제외)
+- 일 진료 시간: ${p.dailyHours ?? 0}시간
 - 대기 시간 문제: ${p.frequentWait ? "있음" : "없음"}
-- 컴플레인 빈도: ${p.complaintFrequency}
-- 매출 집중도: ${p.revenueConcentration}%`;
+- 컴플레인 빈도: ${p.complaintFrequency || ""}
+- 매출 집중도: ${p.revenueConcentration ?? 0}%`;
 }
 
 const BASE_RULE = `당신은 한의원 경영 컨설팅 분야 최고 전문가입니다. 반드시 한국어로 작성하십시오.

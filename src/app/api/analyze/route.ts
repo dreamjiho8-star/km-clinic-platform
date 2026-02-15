@@ -50,15 +50,12 @@ export async function POST(req: NextRequest) {
     const deterministic = TAB_ANALYZERS[tab as TabId](p);
 
     let llmAnalysis = "";
-    let llmDebug = "";
     if (!NO_LLM_TABS.has(tab)) {
       try {
         const messages = buildMessages(tab, p);
         llmAnalysis = await callLLM(messages);
-        if (!llmAnalysis) llmDebug = "callLLM returned empty";
       } catch (e) {
         console.error("[analyze] LLM 호출 실패:", e);
-        llmDebug = String(e);
       }
     }
 
@@ -66,7 +63,6 @@ export async function POST(req: NextRequest) {
       llmAnalysis,
       deterministic,
       financials: deriveFinancials(p),
-      ...(llmDebug ? { _debug: llmDebug } : {}),
     });
   } catch (e) {
     console.error("[analyze] POST 오류:", e);
