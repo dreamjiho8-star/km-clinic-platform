@@ -126,3 +126,45 @@
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
+
+/* ── 인쇄 스타일 ── */
+@media print {
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 사이드바, 토글 버튼 숨김 */
+  aside {
+    display: none !important;
+  }
+
+  /* 헤더 간소화 */
+  header {
+    border-bottom: 2px solid #10b981 !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* 메인 콘텐츠 전체 폭 */
+  main {
+    overflow: visible !important;
+  }
+
+  /* 카드 그림자 제거 */
+  .card, .card-flat {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+    break-inside: avoid;
+  }
+
+  /* 테이블 페이지 나눔 방지 */
+  table {
+    break-inside: avoid;
+  }
+
+  /* 애니메이션 비활성화 */
+  .animate-fade-in {
+    animation: none !important;
+  }
+}

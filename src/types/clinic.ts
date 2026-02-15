@@ -48,6 +48,14 @@ export interface ClinicProfile {
   variableCostEstimate: number;
   includesOwnerSalary: boolean;
 
+  // 초기 투자금
+  depositAmount: number;
+  keyMoney: number;
+  interiorCost: number;
+  equipmentCost: number;
+  initialStockCost: number;
+  otherInitialCost: number;
+
   // 운영 및 리스크
   staffCount: number;
   dailyHours: number;
@@ -63,3 +71,118 @@ export interface AnalysisSummary {
   oneLiner: string;
   actions: string[];
 }
+
+// ── 재무 파생 지표 ──
+export interface Financials {
+  monthlyRevenue: number;
+  totalFixedCost: number;
+  totalCost: number;
+  operatingProfit: number;
+  operatingMargin: number;
+  rentRatio: number;
+  laborRatio: number;
+  breakEvenPatients: number;
+}
+
+// ── 각 분석 함수 반환 타입 ──
+export interface LocationAnalysis {
+  summary: AnalysisSummary;
+  strengths: string[];
+  issues: string[];
+}
+
+export interface CooAnalysis {
+  summary: AnalysisSummary;
+  insights: string[];
+  issues: string[];
+  financials: Financials;
+}
+
+export interface PackageItem {
+  name: string;
+  description: string;
+  targetPrice: string;
+  rationale: string;
+  sessions: string;
+}
+
+export interface PackageAnalysis {
+  summary: AnalysisSummary;
+  packages: PackageItem[];
+  nonInsuranceNote: string;
+}
+
+export interface PositioningAnalysis {
+  summary: AnalysisSummary;
+  strengths: string[];
+  issues: string[];
+}
+
+export interface RiskItem {
+  category: string;
+  level: Verdict;
+  detail: string;
+}
+
+export interface RiskAnalysis {
+  summary: AnalysisSummary;
+  risks: RiskItem[];
+}
+
+// ── 개원 시뮬레이터 ──
+export interface MonthlyProjection {
+  month: number;
+  patients: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  cumulativeProfit: number;
+}
+
+export interface SimulatorScenario {
+  label: string;
+  growthRate: number;
+  projections: MonthlyProjection[];
+  breakEvenMonth: number | null;
+  roiMonth: number | null;
+}
+
+export interface SimulatorAnalysis {
+  summary: AnalysisSummary;
+  initialInvestment: number;
+  scenarios: SimulatorScenario[];
+}
+
+// ── 벤치마크 ──
+export interface BenchmarkItem {
+  label: string;
+  myValue: number;
+  industryAvg: number;
+  unit: string;
+  higherIsBetter: boolean;
+}
+
+export interface BenchmarkAnalysis {
+  summary: AnalysisSummary;
+  items: BenchmarkItem[];
+  overallScore: number;
+}
+
+// ── 시계열 스냅샷 ──
+export interface MetricSnapshot {
+  date: string;
+  monthlyRevenue: number;
+  operatingProfit: number;
+  operatingMargin: number;
+  monthlyPatients: number;
+  avgRevenuePerPatient: number;
+}
+
+export type DeterministicResult =
+  | LocationAnalysis
+  | CooAnalysis
+  | PackageAnalysis
+  | PositioningAnalysis
+  | RiskAnalysis
+  | SimulatorAnalysis
+  | BenchmarkAnalysis;

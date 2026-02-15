@@ -1,8 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ClinicProfile, Verdict } from "@/types/clinic";
+import {
+  ClinicProfile,
+  Verdict,
+  Financials,
+  DeterministicResult,
+  LocationAnalysis,
+  CooAnalysis,
+  PackageAnalysis,
+  PackageItem,
+  PositioningAnalysis,
+  RiskAnalysis,
+  RiskItem,
+  SimulatorAnalysis,
+  SimulatorScenario,
+  BenchmarkAnalysis,
+  BenchmarkItem,
+  MetricSnapshot,
+} from "@/types/clinic";
 
 // ── 탭 정의 ──
 const TABS = [
@@ -36,14 +53,35 @@ const TABS = [
     icon: "🛡️",
     desc: "위험 요인·시나리오",
   },
+  {
+    id: "simulator" as const,
+    label: "개원 시뮬레이션",
+    icon: "🧮",
+    desc: "손익분기·투자 회수 시점",
+  },
+  {
+    id: "benchmark" as const,
+    label: "벤치마크",
+    icon: "📈",
+    desc: "업계 평균 비교·추이",
+  },
 ];
 
 type TabId = (typeof TABS)[number]["id"];
 
 interface AnalysisResult {
   llmAnalysis: string;
-  deterministic: any;
-  financials: any;
+  deterministic: DeterministicResult;
+  financials: Financials;
+}
+
+// ── HTML 이스케이프 (XSS 방지) ──
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // ── 마크다운 간이 렌더러 ──
@@ -71,7 +109,8 @@ function renderMarkdown(md: string) {
   }
 
   function inlineFormat(text: string): string {
-    return text
+    const escaped = escapeHtml(text);
+    return escaped
       .replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/`(.+?)`/g, '<code class="bg-gray-100 px-1 rounded text-xs">$1</code>');
@@ -187,25 +226,26 @@ function DeterministicSection({
   financials,
 }: {
   tab: TabId;
-  data: any;
-  financials: any;
+  data: DeterministicResult;
+  financials: Financials;
 }) {
   if (!data) return null;
 
   if (tab === "location") {
+    const d = data as LocationAnalysis;
     return (
       <div className="space-y-4">
-        {data.summary && (
+        {d.summary && (
           <div className="card-flat border-l-4 border-l-emerald-400 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="heading-sm">요약 판단</span>
-              <VerdictBadge verdict={data.summary.verdict} />
+              <VerdictBadge verdict={d.summary.verdict} />
             </div>
-            <p className="body-sm">{data.summary.oneLiner}</p>
-            {data.summary.actions?.length > 0 && (
+            <p className="body-sm">{d.summary.oneLiner}</p>
+            {d.summary.actions?.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="caption mb-1.5">90일 우선 행동</p>
-                {data.summary.actions.map((a: string, i: number) => (
+                {d.summary.actions.map((a: string, i: number) => (
                   <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1">
                     <span className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                     {a}
@@ -236,10 +276,10 @@ function DeterministicSection({
             />
           </div>
         )}
-        {data.strengths?.length > 0 && (
+        {d.strengths?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-emerald-700 mb-2">긍정 요인</h4>
-            {data.strengths.map((s: string, i: number) => (
+            {d.strengths.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
                 {s}
@@ -247,10 +287,10 @@ function DeterministicSection({
             ))}
           </div>
         )}
-        {data.issues?.length > 0 && (
+        {d.issues?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-amber-700 mb-2">주의 사항</h4>
-            {data.issues.map((s: string, i: number) => (
+            {d.issues.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
                 {s}
@@ -263,15 +303,16 @@ function DeterministicSection({
   }
 
   if (tab === "coo") {
+    const d = data as CooAnalysis;
     return (
       <div className="space-y-4">
-        {data.summary && (
+        {d.summary && (
           <div className="card-flat border-l-4 border-l-emerald-400 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="heading-sm">요약 판단</span>
-              <VerdictBadge verdict={data.summary.verdict} />
+              <VerdictBadge verdict={d.summary.verdict} />
             </div>
-            <p className="body-sm">{data.summary.oneLiner}</p>
+            <p className="body-sm">{d.summary.oneLiner}</p>
           </div>
         )}
         {financials && (
@@ -300,10 +341,10 @@ function DeterministicSection({
             />
           </div>
         )}
-        {data.insights?.length > 0 && (
+        {d.insights?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-blue-700 mb-2">분석 인사이트</h4>
-            {data.insights.map((s: string, i: number) => (
+            {d.insights.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                 {s}
@@ -311,10 +352,10 @@ function DeterministicSection({
             ))}
           </div>
         )}
-        {data.issues?.length > 0 && (
+        {d.issues?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-amber-700 mb-2">개선 필요 항목</h4>
-            {data.issues.map((s: string, i: number) => (
+            {d.issues.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
                 {s}
@@ -327,18 +368,19 @@ function DeterministicSection({
   }
 
   if (tab === "package") {
+    const d = data as PackageAnalysis;
     return (
       <div className="space-y-4">
-        {data.summary && (
+        {d.summary && (
           <div className="card-flat border-l-4 border-l-emerald-400 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="heading-sm">요약 판단</span>
-              <VerdictBadge verdict={data.summary.verdict} />
+              <VerdictBadge verdict={d.summary.verdict} />
             </div>
-            <p className="body-sm">{data.summary.oneLiner}</p>
+            <p className="body-sm">{d.summary.oneLiner}</p>
           </div>
         )}
-        {data.packages?.map((pkg: any, i: number) => (
+        {d.packages?.map((pkg: PackageItem, i: number) => (
           <div key={i} className="card-flat">
             <h4 className="heading-sm mb-2">{pkg.name}</h4>
             <p className="body-sm mb-3">{pkg.description}</p>
@@ -358,10 +400,10 @@ function DeterministicSection({
             </div>
           </div>
         ))}
-        {data.nonInsuranceNote && (
+        {d.nonInsuranceNote && (
           <div className="card-flat bg-blue-50/50 border-blue-200">
             <p className="text-sm font-semibold text-blue-800 mb-1">비급여 참고</p>
-            <p className="text-sm text-blue-700">{data.nonInsuranceNote}</p>
+            <p className="text-sm text-blue-700">{d.nonInsuranceNote}</p>
           </div>
         )}
       </div>
@@ -369,21 +411,22 @@ function DeterministicSection({
   }
 
   if (tab === "positioning") {
+    const d = data as PositioningAnalysis;
     return (
       <div className="space-y-4">
-        {data.summary && (
+        {d.summary && (
           <div className="card-flat border-l-4 border-l-emerald-400 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="heading-sm">요약 판단</span>
-              <VerdictBadge verdict={data.summary.verdict} />
+              <VerdictBadge verdict={d.summary.verdict} />
             </div>
-            <p className="body-sm">{data.summary.oneLiner}</p>
+            <p className="body-sm">{d.summary.oneLiner}</p>
           </div>
         )}
-        {data.strengths?.length > 0 && (
+        {d.strengths?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-emerald-700 mb-2">포지셔닝 강점</h4>
-            {data.strengths.map((s: string, i: number) => (
+            {d.strengths.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
                 {s}
@@ -391,10 +434,10 @@ function DeterministicSection({
             ))}
           </div>
         )}
-        {data.issues?.length > 0 && (
+        {d.issues?.length > 0 && (
           <div className="card-flat">
             <h4 className="text-sm font-semibold text-amber-700 mb-2">조정 필요 사항</h4>
-            {data.issues.map((s: string, i: number) => (
+            {d.issues.map((s: string, i: number) => (
               <p key={i} className="text-sm text-gray-700 flex items-start gap-2 mt-1.5">
                 <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
                 {s}
@@ -407,18 +450,19 @@ function DeterministicSection({
   }
 
   if (tab === "risk") {
+    const d = data as RiskAnalysis;
     return (
       <div className="space-y-4">
-        {data.summary && (
+        {d.summary && (
           <div className="card-flat border-l-4 border-l-emerald-400 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="heading-sm">요약 판단</span>
-              <VerdictBadge verdict={data.summary.verdict} />
+              <VerdictBadge verdict={d.summary.verdict} />
             </div>
-            <p className="body-sm">{data.summary.oneLiner}</p>
+            <p className="body-sm">{d.summary.oneLiner}</p>
           </div>
         )}
-        {data.risks?.map((risk: any, i: number) => (
+        {d.risks?.map((risk: RiskItem, i: number) => (
           <div key={i} className="card-flat flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
@@ -429,6 +473,168 @@ function DeterministicSection({
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (tab === "simulator") {
+    const d = data as SimulatorAnalysis;
+    const MILESTONE_MONTHS = [1, 3, 6, 12, 18, 24, 36];
+    return (
+      <div className="space-y-4">
+        {d.summary && (
+          <div className="card-flat border-l-4 border-l-emerald-400 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="heading-sm">요약 판단</span>
+              <VerdictBadge verdict={d.summary.verdict} />
+            </div>
+            <p className="body-sm">{d.summary.oneLiner}</p>
+          </div>
+        )}
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MetricCard
+            label="초기 투자금"
+            value={`${fmt(d.initialInvestment)}원`}
+            sub="비용 구조에서 입력한 합계"
+          />
+          {d.scenarios.map((sc) => (
+            <MetricCard
+              key={sc.label}
+              label={`${sc.label} 시나리오 (월 ${sc.growthRate}%)`}
+              value={sc.roiMonth ? `${sc.roiMonth}개월` : "36개월 초과"}
+              sub="투자금 회수 시점"
+              accent={sc.roiMonth !== null && sc.roiMonth <= 24}
+            />
+          ))}
+        </div>
+
+        {/* 시나리오별 상세 테이블 */}
+        {d.scenarios.map((sc: SimulatorScenario) => (
+          <div key={sc.label} className="card-flat">
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="heading-sm">{sc.label} 시나리오</h4>
+              <span className="badge-gray text-[10px]">
+                월 환자 증가율 {sc.growthRate}%
+              </span>
+              {sc.breakEvenMonth && (
+                <span className="badge-green text-[10px]">
+                  월 흑자 전환 {sc.breakEvenMonth}개월
+                </span>
+              )}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-2 px-2 text-gray-500 font-medium">개월</th>
+                    <th className="text-right py-2 px-2 text-gray-500 font-medium">환자 수</th>
+                    <th className="text-right py-2 px-2 text-gray-500 font-medium">월 매출</th>
+                    <th className="text-right py-2 px-2 text-gray-500 font-medium">월 비용</th>
+                    <th className="text-right py-2 px-2 text-gray-500 font-medium">월 손익</th>
+                    <th className="text-right py-2 px-2 text-gray-500 font-medium">누적 손익</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sc.projections
+                    .filter((p) => MILESTONE_MONTHS.includes(p.month))
+                    .map((p) => (
+                      <tr
+                        key={p.month}
+                        className={`border-b border-gray-100 ${
+                          sc.roiMonth === p.month ? "bg-emerald-50" : ""
+                        }`}
+                      >
+                        <td className="py-2 px-2 font-medium text-gray-700">{p.month}개월</td>
+                        <td className="py-2 px-2 text-right text-gray-600">{fmt(p.patients)}명</td>
+                        <td className="py-2 px-2 text-right text-gray-600">{fmt(p.revenue)}원</td>
+                        <td className="py-2 px-2 text-right text-gray-600">{fmt(p.cost)}원</td>
+                        <td className={`py-2 px-2 text-right font-medium ${p.profit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                          {fmt(p.profit)}원
+                        </td>
+                        <td className={`py-2 px-2 text-right font-medium ${p.cumulativeProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                          {fmt(p.cumulativeProfit)}원
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (tab === "benchmark") {
+    const d = data as BenchmarkAnalysis;
+    return (
+      <div className="space-y-4">
+        {d.summary && (
+          <div className="card-flat border-l-4 border-l-emerald-400 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="heading-sm">종합 점수</span>
+              <VerdictBadge verdict={d.summary.verdict} />
+              <span className={`text-lg font-bold ${
+                d.overallScore >= 60 ? "text-emerald-700" : d.overallScore >= 30 ? "text-amber-700" : "text-red-700"
+              }`}>
+                {d.overallScore}점
+              </span>
+            </div>
+            <p className="body-sm">{d.summary.oneLiner}</p>
+          </div>
+        )}
+
+        <div className="card-flat">
+          <h4 className="heading-sm mb-4">업계 평균 대비 비교</h4>
+          <div className="space-y-4">
+            {d.items.map((item: BenchmarkItem) => {
+              const isBetter = item.higherIsBetter
+                ? item.myValue >= item.industryAvg
+                : item.myValue <= item.industryAvg;
+              const maxVal = Math.max(item.myValue, item.industryAvg);
+              const myPercent = maxVal > 0 ? (item.myValue / maxVal) * 100 : 0;
+              const avgPercent = maxVal > 0 ? (item.industryAvg / maxVal) * 100 : 0;
+              const fmtVal = (v: number) =>
+                item.unit === "원" ? `${fmt(v)}${item.unit}` : `${v}${item.unit}`;
+
+              return (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                    <span className={`text-xs font-semibold ${isBetter ? "text-emerald-600" : "text-red-500"}`}>
+                      {isBetter ? "평균 이상" : "평균 이하"}
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 w-14 flex-shrink-0">내 한의원</span>
+                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${isBetter ? "bg-emerald-500" : "bg-red-400"}`}
+                          style={{ width: `${Math.max(myPercent, 3)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray-700 w-24 text-right">{fmtVal(item.myValue)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-400 w-14 flex-shrink-0">업계 평균</span>
+                      <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gray-400"
+                          style={{ width: `${Math.max(avgPercent, 3)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-gray-500 w-24 text-right">{fmtVal(item.industryAvg)}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-4">
+            * 출처: 통계청 경제총조사(2020), HIRA 진료비통계지표(2023), 보건복지부 한방의료이용 실태조사. 임대료·인건비 비율은 의원급 별도 공개 없어 업계 관행 기반 추정치
+          </p>
+        </div>
       </div>
     );
   }
@@ -448,41 +654,103 @@ export default function DashboardShell({
   const [activeTab, setActiveTab] = useState<TabId>("location");
   const [results, setResults] = useState<Record<string, AnalysisResult>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [snapshots, setSnapshots] = useState<MetricSnapshot[]>([]);
+  const requestedRef = useRef<Set<string>>(new Set());
+  const profileIdRef = useRef(profile.id);
+  const profileRef = useRef(profile);
+  profileRef.current = profile;
+
+  // 시계열 스냅샷 불러오기
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("clinic-metric-snapshots");
+      if (saved) setSnapshots(JSON.parse(saved));
+    } catch {
+      // 무시
+    }
+  }, []);
+
+  // 프로필이 변경되면 캐시 초기화
+  useEffect(() => {
+    if (profileIdRef.current !== profile.id) {
+      profileIdRef.current = profile.id;
+      requestedRef.current.clear();
+      setResults({});
+      setErrors({});
+    }
+  }, [profile.id]);
 
   const fetchAnalysis = useCallback(
     async (tab: TabId) => {
-      if (results[tab] || loading[tab]) return;
+      if (requestedRef.current.has(tab)) return;
+      requestedRef.current.add(tab);
       setLoading((p) => ({ ...p, [tab]: true }));
+      setErrors((p) => ({ ...p, [tab]: "" }));
       try {
         const res = await fetch("/api/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tab, profile }),
+          body: JSON.stringify({ tab, profile: profileRef.current }),
         });
         if (res.ok) {
           const data = await res.json();
           setResults((p) => ({ ...p, [tab]: data }));
+        } else {
+          setErrors((p) => ({ ...p, [tab]: `분석 요청 실패 (${res.status})` }));
+          requestedRef.current.delete(tab);
         }
+      } catch {
+        setErrors((p) => ({ ...p, [tab]: "네트워크 오류가 발생했습니다" }));
+        requestedRef.current.delete(tab);
       } finally {
         setLoading((p) => ({ ...p, [tab]: false }));
       }
     },
-    [results, loading]
+    [] // profileRef를 사용하므로 의존성 불필요
   );
 
   useEffect(() => {
     fetchAnalysis(activeTab);
   }, [activeTab, fetchAnalysis]);
 
+  function handleRetry() {
+    requestedRef.current.delete(activeTab);
+    fetchAnalysis(activeTab);
+  }
+
   async function handleReset() {
     if (!confirm("프로필을 삭제하고 처음부터 다시 입력하시겠습니까?")) return;
+    localStorage.removeItem("clinic-profile");
+    localStorage.removeItem("clinic-metric-snapshots");
     await fetch("/api/clinic", { method: "DELETE" });
     router.push("/setup");
   }
 
+  function handleSaveSnapshot() {
+    const fin = currentResult?.financials;
+    if (!fin) return;
+    const snapshot: MetricSnapshot = {
+      date: new Date().toISOString().split("T")[0],
+      monthlyRevenue: fin.monthlyRevenue,
+      operatingProfit: fin.operatingProfit,
+      operatingMargin: fin.operatingMargin,
+      monthlyPatients: profile.monthlyPatients,
+      avgRevenuePerPatient: profile.avgRevenuePerPatient,
+    };
+    const updated = [...snapshots, snapshot];
+    setSnapshots(updated);
+    localStorage.setItem("clinic-metric-snapshots", JSON.stringify(updated));
+  }
+
+  const activeTabData = useMemo(
+    () => TABS.find((t) => t.id === activeTab)!,
+    [activeTab]
+  );
   const currentResult = results[activeTab];
   const isLoading = loading[activeTab];
+  const currentError = errors[activeTab];
 
   return (
     <div className="h-screen flex flex-col bg-[#f8f9fa]">
@@ -521,14 +789,24 @@ export default function DashboardShell({
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => window.print()}
+            className="btn-ghost text-xs print:hidden"
+            title="PDF/인쇄"
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" className="inline mr-1">
+              <path d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.25 7.034V3.375" />
+            </svg>
+            인쇄
+          </button>
+          <button
             onClick={() => router.push("/setup")}
-            className="btn-ghost text-xs"
+            className="btn-ghost text-xs print:hidden"
           >
             정보 수정
           </button>
           <button
             onClick={handleReset}
-            className="btn-ghost text-xs text-red-500 hover:bg-red-50"
+            className="btn-ghost text-xs text-red-500 hover:bg-red-50 print:hidden"
           >
             초기화
           </button>
@@ -627,19 +905,27 @@ export default function DashboardShell({
             {/* 탭 제목 */}
             <div className="mb-6 animate-fade-in">
               <div className="flex items-center gap-3 mb-1">
-                <span className="text-2xl">
-                  {TABS.find((t) => t.id === activeTab)?.icon}
-                </span>
+                <span className="text-2xl">{activeTabData.icon}</span>
                 <h2 className="text-xl font-bold text-gray-900">
-                  {TABS.find((t) => t.id === activeTab)?.label}
+                  {activeTabData.label}
                 </h2>
               </div>
               <p className="text-sm text-gray-500 ml-10">
-                {TABS.find((t) => t.id === activeTab)?.desc}
+                {activeTabData.desc}
               </p>
             </div>
 
-            {isLoading ? (
+            {currentError ? (
+              <div className="card-flat border-red-200 bg-red-50 text-center py-8 animate-fade-in">
+                <p className="text-sm text-red-600 mb-3">{currentError}</p>
+                <button
+                  onClick={handleRetry}
+                  className="px-4 py-2 rounded-xl text-sm font-medium bg-red-600 text-white hover:bg-red-700 transition-all"
+                >
+                  다시 시도
+                </button>
+              </div>
+            ) : isLoading ? (
               <LoadingState />
             ) : currentResult ? (
               <div className="animate-fade-in space-y-8">
@@ -652,8 +938,8 @@ export default function DashboardShell({
                   />
                 </section>
 
-                {/* LLM 심층 분석 */}
-                {currentResult.llmAnalysis && (
+                {/* LLM 심층 분석 (시뮬레이터/벤치마크 제외) */}
+                {activeTab !== "simulator" && activeTab !== "benchmark" && currentResult.llmAnalysis && (
                   <section>
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-5 h-5 rounded-md bg-violet-100 flex items-center justify-center">
@@ -672,8 +958,8 @@ export default function DashboardShell({
                   </section>
                 )}
 
-                {/* LLM 미연동 안내 */}
-                {!currentResult.llmAnalysis && (
+                {/* LLM 미연동 안내 (시뮬레이터/벤치마크 제외) */}
+                {activeTab !== "simulator" && activeTab !== "benchmark" && !currentResult.llmAnalysis && (
                   <section>
                     <div className="card-flat border-dashed border-2 border-gray-200 text-center py-8">
                       <p className="text-sm text-gray-500 mb-1">
@@ -685,6 +971,63 @@ export default function DashboardShell({
                         <p>LLM_API_KEY=선택사항</p>
                       </div>
                     </div>
+                  </section>
+                )}
+
+                {/* 벤치마크 탭: 시계열 추이 섹션 */}
+                {activeTab === "benchmark" && (
+                  <section>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <h3 className="heading-sm">추이 기록</h3>
+                        <span className="badge-gray text-[10px]">시계열</span>
+                      </div>
+                      <button
+                        onClick={handleSaveSnapshot}
+                        className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 transition-all print:hidden"
+                      >
+                        현재 상태 저장
+                      </button>
+                    </div>
+                    {snapshots.length > 0 ? (
+                      <div className="card-flat overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-gray-200">
+                              <th className="text-left py-2 px-2 text-gray-500 font-medium">날짜</th>
+                              <th className="text-right py-2 px-2 text-gray-500 font-medium">월 매출</th>
+                              <th className="text-right py-2 px-2 text-gray-500 font-medium">영업이익</th>
+                              <th className="text-right py-2 px-2 text-gray-500 font-medium">이익률</th>
+                              <th className="text-right py-2 px-2 text-gray-500 font-medium">월 환자</th>
+                              <th className="text-right py-2 px-2 text-gray-500 font-medium">객단가</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {snapshots.map((snap, i) => (
+                              <tr key={i} className="border-b border-gray-100">
+                                <td className="py-2 px-2 font-medium text-gray-700">{snap.date}</td>
+                                <td className="py-2 px-2 text-right text-gray-600">{fmt(snap.monthlyRevenue)}원</td>
+                                <td className={`py-2 px-2 text-right font-medium ${snap.operatingProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>
+                                  {fmt(snap.operatingProfit)}원
+                                </td>
+                                <td className="py-2 px-2 text-right text-gray-600">{snap.operatingMargin}%</td>
+                                <td className="py-2 px-2 text-right text-gray-600">{fmt(snap.monthlyPatients)}명</td>
+                                <td className="py-2 px-2 text-right text-gray-600">{fmt(snap.avgRevenuePerPatient)}원</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="card-flat border-dashed border-2 border-gray-200 text-center py-6">
+                        <p className="text-sm text-gray-500">
+                          아직 저장된 기록이 없습니다
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          &quot;현재 상태 저장&quot; 버튼으로 주기적으로 기록하면 추이를 확인할 수 있습니다
+                        </p>
+                      </div>
+                    )}
                   </section>
                 )}
               </div>

@@ -1,4 +1,21 @@
-import { ClinicProfile, Verdict, AnalysisSummary } from "@/types/clinic";
+import {
+  ClinicProfile,
+  Verdict,
+  AnalysisSummary,
+  Financials,
+  LocationAnalysis,
+  CooAnalysis,
+  PackageItem,
+  PackageAnalysis,
+  PositioningAnalysis,
+  RiskItem,
+  RiskAnalysis,
+  MonthlyProjection,
+  SimulatorScenario,
+  SimulatorAnalysis,
+  BenchmarkItem,
+  BenchmarkAnalysis,
+} from "@/types/clinic";
 
 // ────────────────────────── 유틸
 function fmt(n: number): string {
@@ -6,7 +23,7 @@ function fmt(n: number): string {
 }
 
 // ────────────────────────── 재무 파생
-export function deriveFinancials(p: ClinicProfile) {
+export function deriveFinancials(p: ClinicProfile): Financials {
   const monthlyRevenue = p.avgRevenuePerPatient * p.monthlyPatients;
   const totalFixedCost = p.monthlyRent + p.laborCost + p.otherFixedCost;
   const totalCost = totalFixedCost + p.variableCostEstimate;
@@ -23,9 +40,13 @@ export function deriveFinancials(p: ClinicProfile) {
     monthlyRevenue > 0
       ? Math.round((p.laborCost / monthlyRevenue) * 100)
       : 0;
+  // 손익분기 = 총고정비 / (객단가 - 1인당 변동비)
+  const variableCostPerPatient =
+    p.monthlyPatients > 0 ? p.variableCostEstimate / p.monthlyPatients : 0;
+  const contributionMargin = p.avgRevenuePerPatient - variableCostPerPatient;
   const breakEvenPatients =
-    p.avgRevenuePerPatient > 0
-      ? Math.ceil(totalFixedCost / p.avgRevenuePerPatient)
+    contributionMargin > 0
+      ? Math.ceil(totalFixedCost / contributionMargin)
       : 0;
 
   return {
@@ -41,7 +62,7 @@ export function deriveFinancials(p: ClinicProfile) {
 }
 
 // ────────────────────────── 1. 입지 분석
-export function analyzeLocation(p: ClinicProfile) {
+export function analyzeLocation(p: ClinicProfile): LocationAnalysis {
   const issues: string[] = [];
   const strengths: string[] = [];
   let verdict: Verdict = "적합";
@@ -113,7 +134,7 @@ export function analyzeLocation(p: ClinicProfile) {
 }
 
 // ────────────────────────── 2. AI COO·CFO
-export function analyzeCooFinance(p: ClinicProfile) {
+export function analyzeCooFinance(p: ClinicProfile): CooAnalysis {
   const fin = deriveFinancials(p);
   const issues: string[] = [];
   const insights: string[] = [];
@@ -209,14 +230,8 @@ export function analyzeCooFinance(p: ClinicProfile) {
 }
 
 // ────────────────────────── 3. 패키지 설계
-export function analyzePackage(p: ClinicProfile) {
-  const packages: {
-    name: string;
-    description: string;
-    targetPrice: string;
-    rationale: string;
-    sessions: string;
-  }[] = [];
+export function analyzePackage(p: ClinicProfile): PackageAnalysis {
+  const packages: PackageItem[] = [];
 
   if (p.specialties.includes("근골격·통증")) {
     packages.push({
@@ -306,7 +321,7 @@ export function analyzePackage(p: ClinicProfile) {
 }
 
 // ────────────────────────── 4. 진료 포지셔닝
-export function analyzePositioning(p: ClinicProfile) {
+export function analyzePositioning(p: ClinicProfile): PositioningAnalysis {
   const issues: string[] = [];
   const strengths: string[] = [];
   let verdict: Verdict = "적합";
@@ -377,8 +392,8 @@ export function analyzePositioning(p: ClinicProfile) {
 }
 
 // ────────────────────────── 5. 리스크 관리
-export function analyzeRisk(p: ClinicProfile) {
-  const risks: { category: string; level: Verdict; detail: string }[] = [];
+export function analyzeRisk(p: ClinicProfile): RiskAnalysis {
+  const risks: RiskItem[] = [];
 
   if (p.revenueConcentration > 60) {
     risks.push({
@@ -490,4 +505,185 @@ export function analyzeRisk(p: ClinicProfile) {
   };
 
   return { summary, risks };
+}
+
+// ────────────────────────── 6. 개원 시뮬레이터
+export function analyzeSimulator(p: ClinicProfile): SimulatorAnalysis {
+  const fin = deriveFinancials(p);
+
+  // 초기 투자금 (사용자 입력값 합산)
+  const initialInvestment =
+    (p.depositAmount ?? 0) +
+    (p.keyMoney ?? 0) +
+    (p.interiorCost ?? 0) +
+    (p.equipmentCost ?? 0) +
+    (p.initialStockCost ?? 0) +
+    (p.otherInitialCost ?? 0);
+
+  const variablePerPatient =
+    p.monthlyPatients > 0 ? p.variableCostEstimate / p.monthlyPatients : 0;
+  const fixedCost = p.monthlyRent + p.laborCost + p.otherFixedCost;
+
+  function simulate(growthRate: number): Omit<SimulatorScenario, "label" | "growthRate"> {
+    const projections: MonthlyProjection[] = [];
+    let cumulative = -initialInvestment;
+    let breakEvenMonth: number | null = null;
+    let roiMonth: number | null = null;
+
+    for (let m = 1; m <= 36; m++) {
+      const patients = Math.round(
+        p.monthlyPatients * Math.pow(1 + growthRate / 100, m)
+      );
+      const revenue = patients * p.avgRevenuePerPatient;
+      const variableCost = Math.round(patients * variablePerPatient);
+      const cost = fixedCost + variableCost;
+      const profit = revenue - cost;
+      cumulative += profit;
+
+      projections.push({
+        month: m,
+        patients,
+        revenue,
+        cost,
+        profit,
+        cumulativeProfit: cumulative,
+      });
+
+      if (breakEvenMonth === null && profit >= 0) breakEvenMonth = m;
+      if (roiMonth === null && cumulative >= 0) roiMonth = m;
+    }
+
+    return { projections, breakEvenMonth, roiMonth };
+  }
+
+  const scenarios: SimulatorScenario[] = [
+    { label: "보수적", growthRate: 1, ...simulate(1) },
+    { label: "기본", growthRate: 3, ...simulate(3) },
+    { label: "낙관적", growthRate: 5, ...simulate(5) },
+  ];
+
+  const base = scenarios[1];
+  let verdict: Verdict = "적합";
+  if (base.roiMonth === null || base.roiMonth > 30) verdict = "주의 필요";
+  if (base.breakEvenMonth === null) verdict = "비추천";
+  if (base.roiMonth === null && base.projections[35].cumulativeProfit < -initialInvestment * 0.5) {
+    verdict = "비추천";
+  }
+
+  const summary: AnalysisSummary = {
+    verdict,
+    oneLiner: base.roiMonth
+      ? `기본 시나리오(월 ${base.growthRate}% 성장) 기준, ${base.roiMonth}개월 차에 투자금 회수가 예상됩니다.`
+      : "36개월 내 투자금 회수가 어려울 수 있습니다. 비용 구조 재검토가 필요합니다.",
+    actions: [
+      "초기 투자금을 최소화할 수 있는 방안 검토 (중고 장비, 단계적 인테리어)",
+      "개원 초기 환자 유입을 위한 지역 홍보 전략 수립",
+      "월별 실적 대비 시나리오 달성률 추적",
+    ],
+  };
+
+  return { summary, initialInvestment, scenarios };
+}
+
+// ────────────────────────── 7. 벤치마크
+// 한의원 업계 평균 — 공공데이터 기반
+// ┌─ 영업이익률 28.6%        ← 통계청 경제총조사 2020 (한의원)
+// ├─ 임대료 비율 10%         ← 의원급 별도 공개 없음, 업계 관행 기반 추정
+// ├─ 인건비 비율 25%         ← 의원급 별도 공개 없음, 업계 관행 기반 추정
+// ├─ 평균 객단가 68,594원    ← HIRA 진료비통계지표 2023 상반기 (외래 내원일당 요양급여비용)
+// ├─ 월 환자 수 500명        ← HIRA 2023 상반기 (내원일수 44,064천일 ÷ 14,497개소 ÷ 6개월)
+// ├─ 월 매출 29,430,000원    ← 통계청 경제총조사 2020 (한의원 월평균 매출)
+// └─ 비급여 비중 37.5%       ← 보건복지부 한방의료이용 실태조사 2014
+const INDUSTRY_AVG = {
+  operatingMargin: 28.6,
+  rentRatio: 10,
+  laborRatio: 25,
+  avgRevenuePerPatient: 68594,
+  monthlyPatients: 500,
+  monthlyRevenue: 29_430_000,
+  nonInsuranceRatio: 37.5,
+};
+
+export function analyzeBenchmark(p: ClinicProfile): BenchmarkAnalysis {
+  const fin = deriveFinancials(p);
+
+  const items: BenchmarkItem[] = [
+    {
+      label: "영업이익률",
+      myValue: fin.operatingMargin,
+      industryAvg: INDUSTRY_AVG.operatingMargin,
+      unit: "%",
+      higherIsBetter: true,
+    },
+    {
+      label: "임대료 비율",
+      myValue: fin.rentRatio,
+      industryAvg: INDUSTRY_AVG.rentRatio,
+      unit: "%",
+      higherIsBetter: false,
+    },
+    {
+      label: "인건비 비율",
+      myValue: fin.laborRatio,
+      industryAvg: INDUSTRY_AVG.laborRatio,
+      unit: "%",
+      higherIsBetter: false,
+    },
+    {
+      label: "평균 객단가",
+      myValue: p.avgRevenuePerPatient,
+      industryAvg: INDUSTRY_AVG.avgRevenuePerPatient,
+      unit: "원",
+      higherIsBetter: true,
+    },
+    {
+      label: "월 환자 수",
+      myValue: p.monthlyPatients,
+      industryAvg: INDUSTRY_AVG.monthlyPatients,
+      unit: "명",
+      higherIsBetter: true,
+    },
+    {
+      label: "월 매출",
+      myValue: fin.monthlyRevenue,
+      industryAvg: INDUSTRY_AVG.monthlyRevenue,
+      unit: "원",
+      higherIsBetter: true,
+    },
+    {
+      label: "비급여 비중",
+      myValue: p.nonInsuranceRatio,
+      industryAvg: INDUSTRY_AVG.nonInsuranceRatio,
+      unit: "%",
+      higherIsBetter: true,
+    },
+  ];
+
+  const betterCount = items.filter((i) =>
+    i.higherIsBetter
+      ? i.myValue >= i.industryAvg
+      : i.myValue <= i.industryAvg
+  ).length;
+  const overallScore = Math.round((betterCount / items.length) * 100);
+
+  let verdict: Verdict = "적합";
+  if (overallScore < 60) verdict = "주의 필요";
+  if (overallScore < 30) verdict = "비추천";
+
+  const summary: AnalysisSummary = {
+    verdict,
+    oneLiner: `${items.length}개 지표 중 ${betterCount}개가 업계 평균 이상입니다 (종합 ${overallScore}점).`,
+    actions:
+      overallScore >= 60
+        ? [
+            "현재 강점을 유지하면서 약점 지표를 집중 개선",
+            "분기별 벤치마크 재비교로 추세 관리",
+          ]
+        : [
+            "업계 평균 이하 지표를 우선순위로 개선 계획 수립",
+            "인근 성공 한의원의 운영 모델 벤치마킹",
+          ],
+  };
+
+  return { summary, items, overallScore };
 }

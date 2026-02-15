@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   OpeningStatus,
@@ -32,6 +32,7 @@ export default function SetupForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   // 기본 정보
   const [openingStatus, setOpeningStatus] = useState<OpeningStatus>("1년 미만");
@@ -56,6 +57,14 @@ export default function SetupForm() {
   const [variableCostEstimate, setVariableCostEstimate] = useState(2000000);
   const [includesOwnerSalary, setIncludesOwnerSalary] = useState(false);
 
+  // 초기 투자금
+  const [depositAmount, setDepositAmount] = useState(30000000);
+  const [keyMoney, setKeyMoney] = useState(0);
+  const [interiorCost, setInteriorCost] = useState(30000000);
+  const [equipmentCost, setEquipmentCost] = useState(20000000);
+  const [initialStockCost, setInitialStockCost] = useState(5000000);
+  const [otherInitialCost, setOtherInitialCost] = useState(5000000);
+
   // 운영 및 리스크
   const [staffCount, setStaffCount] = useState(3);
   const [dailyHours, setDailyHours] = useState(8);
@@ -63,22 +72,77 @@ export default function SetupForm() {
   const [complaintFrequency, setComplaintFrequency] = useState<ComplaintFrequency>("거의 없음");
   const [revenueConcentration, setRevenueConcentration] = useState(30);
 
+  // 기존 프로필이 있으면 폼에 반영 (정보 수정 시)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("clinic-profile");
+      if (!saved) return;
+      const p = JSON.parse(saved);
+      if (p.openingStatus) setOpeningStatus(p.openingStatus);
+      if (p.regionCity) setRegionCity(p.regionCity);
+      if (p.regionDong) setRegionDong(p.regionDong);
+      if (p.buildingType) setBuildingType(p.buildingType);
+      if (p.specialties?.length) setSpecialties(p.specialties);
+      if (p.patientGroup) setPatientGroup(p.patientGroup);
+      if (p.avgRevenuePerPatient) setAvgRevenuePerPatient(p.avgRevenuePerPatient);
+      if (p.revisitRange) setRevisitRange(p.revisitRange);
+      if (p.monthlyPatients) setMonthlyPatients(p.monthlyPatients);
+      if (p.nonInsuranceRatio != null) setNonInsuranceRatio(p.nonInsuranceRatio);
+      if (p.monthlyRent) setMonthlyRent(p.monthlyRent);
+      if (p.laborCost) setLaborCost(p.laborCost);
+      if (p.otherFixedCost != null) setOtherFixedCost(p.otherFixedCost);
+      if (p.variableCostEstimate != null) setVariableCostEstimate(p.variableCostEstimate);
+      if (p.includesOwnerSalary != null) setIncludesOwnerSalary(p.includesOwnerSalary);
+      if (p.depositAmount != null) setDepositAmount(p.depositAmount);
+      if (p.keyMoney != null) setKeyMoney(p.keyMoney);
+      if (p.interiorCost != null) setInteriorCost(p.interiorCost);
+      if (p.equipmentCost != null) setEquipmentCost(p.equipmentCost);
+      if (p.initialStockCost != null) setInitialStockCost(p.initialStockCost);
+      if (p.otherInitialCost != null) setOtherInitialCost(p.otherInitialCost);
+      if (p.staffCount != null) setStaffCount(p.staffCount);
+      if (p.dailyHours) setDailyHours(p.dailyHours);
+      if (p.frequentWait != null) setFrequentWait(p.frequentWait);
+      if (p.complaintFrequency) setComplaintFrequency(p.complaintFrequency);
+      if (p.revenueConcentration != null) setRevenueConcentration(p.revenueConcentration);
+    } catch (e) {
+      console.warn("[SetupForm] 저장된 프로필 복원 실패:", e);
+    }
+  }, []);
+
   function toggleSpecialty(s: Specialty) {
     setSpecialties((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
     );
   }
 
-  const canNext =
-    step === 1 ? regionCity.trim() !== "" && regionDong.trim() !== ""
-    : step === 2 ? specialties.length > 0
-    : true;
+  function isStepValid(s: number): boolean {
+    if (s >= 1 && (regionCity.trim() === "" || regionDong.trim() === "")) return false;
+    if (s >= 2 && specialties.length === 0) return false;
+    return true;
+  }
+
+  const canNext = isStepValid(step);
+
+  function handleStepClick(targetStep: number) {
+    // 현재 스텝 이전으로 돌아가는 건 항상 허용
+    if (targetStep <= step) {
+      setStep(targetStep);
+      return;
+    }
+    // 앞으로 이동 시 중간 스텝까지 모두 유효해야 함
+    for (let s = step; s < targetStep; s++) {
+      if (!isStepValid(s)) return;
+    }
+    setStep(targetStep);
+  }
 
   const monthlyRevenue = avgRevenuePerPatient * monthlyPatients;
   const totalCost = monthlyRent + laborCost + otherFixedCost + variableCostEstimate;
+  const totalInitialInvestment = depositAmount + keyMoney + interiorCost + equipmentCost + initialStockCost + otherInitialCost;
 
   async function handleSubmit() {
     setSaving(true);
+    setSubmitError("");
     try {
       const res = await fetch("/api/clinic", {
         method: "POST",
@@ -88,6 +152,7 @@ export default function SetupForm() {
           specialties, patientGroup,
           avgRevenuePerPatient, revisitRange, monthlyPatients, nonInsuranceRatio,
           monthlyRent, laborCost, otherFixedCost, variableCostEstimate, includesOwnerSalary,
+          depositAmount, keyMoney, interiorCost, equipmentCost, initialStockCost, otherInitialCost,
           staffCount, dailyHours, frequentWait, complaintFrequency, revenueConcentration,
         }),
       });
@@ -95,9 +160,35 @@ export default function SetupForm() {
         const data = await res.json();
         if (data.profile) {
           localStorage.setItem("clinic-profile", JSON.stringify(data.profile));
+
+          // 시계열 스냅샷 자동 저장
+          try {
+            const totalFixed = monthlyRent + laborCost + otherFixedCost;
+            const totalCostCalc = totalFixed + variableCostEstimate;
+            const opProfit = monthlyRevenue - totalCostCalc;
+            const opMargin = monthlyRevenue > 0 ? Math.round((opProfit / monthlyRevenue) * 100) : 0;
+            const snapshot = {
+              date: new Date().toISOString().split("T")[0],
+              monthlyRevenue,
+              operatingProfit: opProfit,
+              operatingMargin: opMargin,
+              monthlyPatients,
+              avgRevenuePerPatient,
+            };
+            const existing = JSON.parse(localStorage.getItem("clinic-metric-snapshots") || "[]");
+            existing.push(snapshot);
+            localStorage.setItem("clinic-metric-snapshots", JSON.stringify(existing));
+          } catch {
+            // 스냅샷 실패해도 정상 진행
+          }
         }
         router.push("/dashboard");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setSubmitError(err.error || "저장에 실패했습니다. 다시 시도해 주십시오.");
       }
+    } catch {
+      setSubmitError("네트워크 오류가 발생했습니다. 연결을 확인해 주십시오.");
     } finally {
       setSaving(false);
     }
@@ -120,7 +211,7 @@ export default function SetupForm() {
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center">
                 <button
-                  onClick={() => setStep(s.id)}
+                  onClick={() => handleStepClick(s.id)}
                   className="flex items-center gap-2"
                 >
                   <span
@@ -297,8 +388,8 @@ export default function SetupForm() {
                     <input
                       type="number"
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
-                      value={avgRevenuePerPatient}
-                      onChange={(e) => setAvgRevenuePerPatient(Number(e.target.value))}
+                      value={avgRevenuePerPatient || ""}
+                      onChange={(e) => setAvgRevenuePerPatient(e.target.value === "" ? 0 : Number(e.target.value))}
                       min={0} step={1000}
                     />
                   </div>
@@ -307,8 +398,8 @@ export default function SetupForm() {
                     <input
                       type="number"
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
-                      value={monthlyPatients}
-                      onChange={(e) => setMonthlyPatients(Number(e.target.value))}
+                      value={monthlyPatients || ""}
+                      onChange={(e) => setMonthlyPatients(e.target.value === "" ? 0 : Number(e.target.value))}
                       min={0}
                     />
                   </div>
@@ -370,8 +461,8 @@ export default function SetupForm() {
                       <input
                         type="number"
                         className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
-                        value={f.value}
-                        onChange={(e) => f.set(Number(e.target.value))}
+                        value={f.value || ""}
+                        onChange={(e) => f.set(e.target.value === "" ? 0 : Number(e.target.value))}
                         min={0} step={100000}
                       />
                     </div>
@@ -386,6 +477,41 @@ export default function SetupForm() {
                   />
                   <span className="text-sm text-gray-700">원장 인건비가 위 인건비에 포함됨</span>
                 </label>
+                {/* 초기 투자금 */}
+                <div className="border-t border-gray-200 pt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    초기 투자금
+                  </label>
+                  <p className="text-xs text-gray-400 mb-4">개원 시뮬레이션에 사용됩니다. 해당 없는 항목은 0으로 두면 됩니다.</p>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {[
+                      { label: "보증금", value: depositAmount, set: setDepositAmount },
+                      { label: "권리금", value: keyMoney, set: setKeyMoney },
+                      { label: "인테리어", value: interiorCost, set: setInteriorCost },
+                      { label: "의료장비", value: equipmentCost, set: setEquipmentCost },
+                      { label: "초기 재고 (한약재 등)", value: initialStockCost, set: setInitialStockCost },
+                      { label: "기타 (간판·가구·IT 등)", value: otherInitialCost, set: setOtherInitialCost },
+                    ].map((f) => (
+                      <div key={f.label}>
+                        <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+                        <input
+                          type="number"
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
+                          value={f.value || ""}
+                          onChange={(e) => f.set(e.target.value === "" ? 0 : Number(e.target.value))}
+                          min={0} step={1000000}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">총 초기 투자금</span>
+                      <span className="text-base font-bold text-gray-800">{totalInitialInvestment.toLocaleString("ko-KR")}원</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* 비용 미리보기 */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -411,8 +537,8 @@ export default function SetupForm() {
                     <input
                       type="number"
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
-                      value={staffCount}
-                      onChange={(e) => setStaffCount(Number(e.target.value))}
+                      value={staffCount || ""}
+                      onChange={(e) => setStaffCount(e.target.value === "" ? 0 : Number(e.target.value))}
                       min={0}
                     />
                   </div>
@@ -421,8 +547,8 @@ export default function SetupForm() {
                     <input
                       type="number"
                       className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
-                      value={dailyHours}
-                      onChange={(e) => setDailyHours(Number(e.target.value))}
+                      value={dailyHours || ""}
+                      onChange={(e) => setDailyHours(e.target.value === "" ? 0 : Number(e.target.value))}
                       min={1} max={24}
                     />
                   </div>
@@ -473,6 +599,13 @@ export default function SetupForm() {
               </div>
             )}
           </div>
+
+          {/* 에러 메시지 */}
+          {submitError && (
+            <div className="mx-8 mb-2 p-3 rounded-xl bg-red-50 border border-red-200 text-sm text-red-600">
+              {submitError}
+            </div>
+          )}
 
           {/* 하단 버튼 */}
           <div className="px-8 py-5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
