@@ -13,7 +13,7 @@ import {
   analyzeBenchmark,
   deriveFinancials,
 } from "@/lib/analysis";
-import { callLLM, buildMessages, _lastLLMError } from "@/lib/llm";
+import { callLLM, buildMessages } from "@/lib/llm";
 
 const VALID_TABS = [
   "location", "coo", "package", "positioning", "risk",
@@ -50,14 +50,11 @@ export async function POST(req: NextRequest) {
     const deterministic = TAB_ANALYZERS[tab as TabId](p);
 
     let llmAnalysis = "";
-    let _llmError = "";
     if (!NO_LLM_TABS.has(tab)) {
       try {
         const messages = buildMessages(tab, p);
         llmAnalysis = await callLLM(messages);
-        if (!llmAnalysis) _llmError = "callLLM returned empty string";
       } catch (e) {
-        _llmError = `buildMessages/callLLM threw: ${String(e)}`;
         console.error("[analyze] LLM 호출 실패:", e);
       }
     }
@@ -66,7 +63,6 @@ export async function POST(req: NextRequest) {
       llmAnalysis,
       deterministic,
       financials: deriveFinancials(p),
-      ...(_llmError ? { _llmError: `${_llmError} | llmDetail: ${_lastLLMError}` } : {}),
     });
   } catch (e) {
     console.error("[analyze] POST 오류:", e);
