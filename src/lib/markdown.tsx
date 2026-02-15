@@ -42,8 +42,10 @@ export function renderMarkdown(md: string) {
     if (listItems.length === 0) return;
     const isOrdered = listItems[0].ordered;
     const Tag = isOrdered ? "ol" : "ul";
+    // 순서 리스트(섹션 구분)는 첫 요소가 아닐 때 위에 넉넉한 간격
+    const topPad = isOrdered && elements.length > 0 ? "pt-6" : "";
     elements.push(
-      <Tag key={key++} className="space-y-2.5 pb-3 pl-1">
+      <Tag key={key++} className={`space-y-2.5 pb-3 pl-1 ${topPad}`}>
         {listItems.map((item, i) => (
           <li
             key={i}
