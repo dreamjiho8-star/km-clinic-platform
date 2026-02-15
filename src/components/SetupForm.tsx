@@ -207,12 +207,34 @@ export default function SetupForm() {
       {/* 스텝 인디케이터 */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
-          <div className="flex items-center justify-between">
+          {/* 모바일: 현재 스텝 라벨 + 도트 */}
+          <div className="sm:hidden flex flex-col items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              {STEPS.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => handleStepClick(s.id)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    step === s.id
+                      ? "w-6 bg-emerald-600"
+                      : step > s.id
+                      ? "bg-emerald-300"
+                      : "bg-gray-200"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-sm font-medium text-emerald-700">
+              {step}. {STEPS.find((s) => s.id === step)?.label}
+            </span>
+          </div>
+          {/* 데스크탑: 기존 스텝 표시 */}
+          <div className="hidden sm:flex items-center justify-between">
             {STEPS.map((s, i) => (
               <div key={s.id} className="flex items-center">
                 <button
                   onClick={() => handleStepClick(s.id)}
-                  className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2"
+                  className="flex items-center gap-2"
                 >
                   <span
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0 transition-all ${
@@ -226,7 +248,7 @@ export default function SetupForm() {
                     {step > s.id ? "✓" : s.id}
                   </span>
                   <span
-                    className={`text-xs sm:text-sm font-medium whitespace-nowrap transition-colors hidden sm:inline ${
+                    className={`text-sm font-medium whitespace-nowrap transition-colors ${
                       step === s.id
                         ? "text-emerald-700"
                         : step > s.id
@@ -239,7 +261,7 @@ export default function SetupForm() {
                 </button>
                 {i < STEPS.length - 1 && (
                   <div
-                    className={`w-4 sm:w-8 lg:w-12 h-px mx-1 sm:mx-3 flex-shrink-0 ${
+                    className={`w-8 lg:w-12 h-px mx-3 flex-shrink-0 ${
                       step > s.id ? "bg-emerald-300" : "bg-gray-200"
                     }`}
                   />
