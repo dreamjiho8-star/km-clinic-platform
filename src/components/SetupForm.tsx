@@ -207,7 +207,7 @@ export default function SetupForm() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 tracking-tight">MediStrategy</h1>
-              <p className="text-sm text-gray-500 mt-0.5">한의원 개원 경영 분석</p>
+              <p className="text-sm text-gray-500 mt-0.5">AI 기반 한의원 경영 분석 플랫폼</p>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "MediStrategy",
-  description: "한의원 개원 경영 분석 플랫폼",
+  description: "AI 기반 한의원 경영 분석 플랫폼",
 };
 
 export default function RootLayout({
