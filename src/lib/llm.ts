@@ -22,15 +22,12 @@ const REPLACE_MAP: [RegExp, string][] = [
 
 function postProcess(text: string): string {
   let result = text;
-  // Qwen3 thinking 태그 제거
-  result = result.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
   // 한자 제거
   result = result.replace(/[\u4e00-\u9fff]/g, "");
   // 알려진 영어→한글 치환
   for (const [pattern, replacement] of REPLACE_MAP) {
     result = result.replace(pattern, replacement);
   }
-  // 마크다운 구조를 깨지 않도록 영어 단어는 그대로 유지
   // 중복 공백 정리
   result = result.replace(/  +/g, " ");
   result = result.replace(/\n{3,}/g, "\n\n");
