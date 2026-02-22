@@ -579,6 +579,11 @@ export default function DashboardShell({
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // 모바일에서는 사이드바 기본 접힘
+  useEffect(() => {
+    if (window.innerWidth < 768) setSidebarOpen(false);
+  }, []);
   const [snapshots, setSnapshots] = useState<MetricSnapshot[]>([]);
   const requestedRef = useRef<Set<string>>(new Set());
   const profileIdRef = useRef(profile.id);
@@ -738,12 +743,19 @@ export default function DashboardShell({
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* ── 모바일 백드롭 ── */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/30 z-30 md:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
         {/* ── 왼쪽 사이드바 ── */}
         <aside
-          className={`flex-shrink-0 bg-white border-r border-gray-100 transition-all duration-300 overflow-y-auto scrollbar-thin ${
-            sidebarOpen ? "w-60" : "w-0 opacity-0 pointer-events-none"
-          }`}
+          className={`bg-white border-r border-gray-100 transition-all duration-300 overflow-y-auto scrollbar-thin
+            fixed top-14 bottom-0 left-0 z-40 md:static md:z-auto
+            ${sidebarOpen ? "w-60" : "w-0 opacity-0 pointer-events-none"}`}
         >
           <div className="p-3 pt-4">
             <p className="caption px-3 mb-2">분석 메뉴</p>
@@ -754,7 +766,10 @@ export default function DashboardShell({
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      if (window.innerWidth < 768) setSidebarOpen(false);
+                    }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
                       isActive
                         ? "bg-emerald-50 shadow-sm"
